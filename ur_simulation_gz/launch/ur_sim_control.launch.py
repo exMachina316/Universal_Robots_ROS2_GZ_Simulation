@@ -74,6 +74,14 @@ def launch_setup(context, *args, **kwargs):
         [FindPackageShare(description_package), "rviz", "view_robot.rviz"]
     )
 
+    gz_bridge_config = PathJoinSubstitution(
+        [FindPackageShare(runtime_config_package), "config", "ros_gz_bridge.yaml"]
+    )
+
+    world_file = PathJoinSubstitution(
+        [FindPackageShare(runtime_config_package), "world", world_file]
+    )
+
     robot_description_content = Command(
         [
             PathJoinSubstitution([FindExecutable(name="xacro")]),
@@ -171,7 +179,7 @@ def launch_setup(context, *args, **kwargs):
         PythonLaunchDescriptionSource(
             [FindPackageShare("ros_gz_sim"), "/launch/gz_sim.launch.py"]
         ),
-        launch_arguments={"gz_args": [" -r -v 4 ", world_file]}.items(),
+        launch_arguments={"gz_args": ["-r ", "-v ", "4 ", world_file]}.items(),
         condition=IfCondition(gazebo_gui),
     )
 
@@ -179,17 +187,16 @@ def launch_setup(context, *args, **kwargs):
         PythonLaunchDescriptionSource(
             [FindPackageShare("ros_gz_sim"), "/launch/gz_sim.launch.py"]
         ),
-        launch_arguments={"gz_args": [" -s -r -v 4 ", world_file]}.items(),
+        launch_arguments={"gz_args": ["-s", "-r", "-v", "4", world_file]}.items(),
         condition=UnlessCondition(gazebo_gui),
     )
 
-    # Make the /clock topic available in ROS
+    # ROS-GZ bridge
     gz_sim_bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
-        arguments=[
-            "/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock",
-        ],
+        name="ros_gz_bridge",
+        parameters=[{'config_file': gz_bridge_config, 'use_sim_time': True}],
         output="screen",
     )
 
@@ -215,20 +222,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "ur_type",
             description="Type/series of used UR robot.",
-            choices=[
-                "ur3",
-                "ur3e",
-                "ur5",
-                "ur5e",
-                "ur7e",
-                "ur10",
-                "ur10e",
-                "ur12e",
-                "ur16e",
-                "ur15",
-                "ur20",
-                "ur30",
-            ],
+            choices=["ur3", "ur3e", "ur5", "ur5e", "ur10", "ur10e", "ur16e", "ur20", "ur30"],
             default_value="ur5e",
         )
     )
@@ -272,7 +266,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "description_package",
-            default_value="ur_description",
+            default_value="ur_rail_description",
             description="Description package with robot URDF/XACRO files. Usually the argument \
         is not set, it enables use of a custom description.",
         )
@@ -280,7 +274,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "description_file",
-            default_value="ur.urdf.xacro",
+            default_value="ur_on_rail.urdf.xacro",
             description="URDF/XACRO description file with the robot.",
         )
     )
